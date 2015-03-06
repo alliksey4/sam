@@ -1,0 +1,187 @@
+#!/bin/bash
+
+DOCKER_PATH="/usr/bin/docker";
+IMAGE='';
+
+#set -xv
+
+## Functions
+# Copy META from image
+copy_meta_func () {
+	# input: $IMAGE $DOCKER_PATH
+	TEMPLATE_DIR=`mktemp -d`;
+	$DOCKER_PATH run -i -t --rm=true -v $TEMPLATE_DIR:$TEMPLATE_DIR  --net=host $IMAGE /bin/sh -c "cp -r /meta $TEMPLATE_DIR/meta" 2>&1 > /dev/null;
+	if [[ $? -ne 0 ]]; then
+        	echo -e "\E[31mERROR: Directory '/meta' not fount to image.">&2;tput sgr0;
+		rm -rf $TEMPLATE_DIR
+		exit 1;
+	fi;
+	# output $pwd $TEMPLATE_DIR
+}
+
+# Uninstall image function
+uninstall_image_func () {
+	echo;
+	echo -e "\E[32mUninstall image $IMAGE";tput sgr0;
+	copy_meta_func;
+	pwd=$PWD;
+	cd $TEMPLATE_DIR/meta;
+        source uninstall;
+	cd $pwd;
+        rm -rf $TEMPLATE_DIR;
+	echo;
+}
+
+# Install image function
+install_image_func () {
+	echo;
+	echo -e "\E[32mInstall image $IMAGE";tput sgr0;
+	TEST_CONTAINER=`docker ps -a | grep $IMAGE`;
+	if [[ -n $TEST_CONTAINER ]]; then
+		read -p "In system already stared container. Uninstall image? (y/n)" choice
+		case "$choice" in
+                    y|Y ) uninstall_image_func;;
+                    n|N ) exit 0;;
+                    * ) echo "Incorrect input.";
+                        exit 1;;
+                esac
+	fi;
+	copy_meta_func;
+	pwd=$PWD;
+        cd $TEMPLATE_DIR/meta;
+	echo;
+	source $TEMPLATE_DIR/meta/install;
+	cd $pwd;
+	rm -rf $TEMPLATE_DIR;
+	echo;
+}
+
+# Remove old image function
+delete_old_image_func () {
+
+	# input: $IMAGE $DOCKER_PATH
+	# Image latest?
+	OLD_IMAGE=`$DOCKER_PATH images |grep latest |awk ' {print $1} '| grep $IMAGE`;
+	if [[ -n $OLD_IMAGE ]];then
+		OLD_IMAGE="$IMAGE:latest"
+	else
+		# Image is exists?
+		OLD_IMAGE=`$DOCKER_PATH images |  awk ' {print $1,$2} ' | sed "s/ /:/g" | grep "$IMAGE" `	
+	fi;	
+	
+	if [[ -z $OLD_IMAGE ]]; then
+		echo "No deleted old image. Image $IMAGE is not found. ";
+	else
+		read -p "In system installed old version of image. Uninstall old image? (y/n)" choice
+		case "$choice" in 
+		    y|Y ) uninstall_image_func;
+			  $DOCKER_PATH rmi -f $IMAGE;;
+		    n|N ) echo ;;
+        	    * ) echo "Incorrect input.";
+		        exit 1;;
+        	esac
+	fi;
+	# output:
+}
+
+## Commands
+# This root?
+if [[ $EUID -ne 0 ]]; then
+    echo -e "\E[31mThis script must be run as root">&2;tput sgr0;
+    exit 1
+fi
+
+USAGE="
+Options:
+	-f  [archive.tar]	Docker load image from tar archive.
+	-i  [image]:[version]	Install selected docker image.
+	-u  [container]		Uninstall selected container.
+	-h           		Help.
+";
+
+while getopts "f:i:u:h" OPTION
+do
+    case $OPTION in
+        f ) if [ -f $OPTARG ]; then
+
+                ## Find image name to archive.
+		# Find file "repositories"
+		tar -xf $OPTARG repositories;
+		if [[ $? -ne 0 ]]; then
+		    echo -e "\E[31mERROR: File repositories not fount to archive.">&2;tput sgr0;
+		    echo "May be incorrectly created archive.";
+		    exit 1;
+		fi;
+		# Correct file "repositories"
+                IMAGE=`cat repositories | awk -F '"' ' {print $2,$4} ' | sed "s/ /:/g"`;
+		if [[ -z $IMAGE ]]; then
+		    echo -e "\E[31mERROR: Incorrect file repositories to archive.">&2;tput sgr0;
+		    echo "Not found image name to file.";
+		    echo "May be incorrectly created archive.";
+		    exit 1;
+		fi;
+		rm -f repositories;
+		##
+		# Delete old image
+		delete_old_image_func;
+		# Load image
+		$DOCKER_PATH load -i $OPTARG
+		if [[ $? -ne 0 ]]; then	
+		    echo -e "\E[31mERROR: Loading image.">&2;tput sgr0;
+		    exit 1;
+		fi;
+		# Install image
+		install_image_func;
+		echo -e "\E[32mImage installed.";tput sgr0;
+	   else
+		echo -e "\E[31m$0: Archive image not defined." >&2;tput sgr0;
+		exit 1;
+	   fi;;
+
+	i ) TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep "$OPTARG"`;
+	   if [[ -z $TEST_IMAGE ]]; then
+		echo -e "\E[31mERROR: Not found image $OPTARG.">&2;tput sgr0;
+		echo "Run 'COMMAND -h' for more information on a command.";
+		exit 1;
+	   fi;
+	   #IMAGE=`echo $OPTARG | awk -F ':' 'NF--' | sed 's/ /:/g'`
+	   # Delete old image
+           #delete_old_image_func;   
+	   # Install image
+	   IMAGE=$OPTARG;
+	   install_image_func;
+	   echo -e "\E[32mImage installed.";tput sgr0;
+	   exit 0;;
+	
+	u ) IMAGE=`$DOCKER_PATH ps -a | grep $OPTARG | unexpand -a -t2|awk -F '\t+' '{print $2}'`;
+	   if [[ -z $IMAGE ]]; then
+		echo -e "\E[31mERROR: Not found image for container $OPTARG.">&2;tput sgr0;
+		echo "Run 'COMMAND -h' for more information on a command.";
+		exit 1;
+	   fi;
+	   # Uninstall image
+	   uninstall_image_func;
+           echo -e "\E[32mImage uninstalled.";tput sgr0;
+           exit 0;;
+
+        h ) echo "$USAGE"; exit;;
+        *) echo;;
+    esac
+done
+
+if [[ -z $IMAGE ]]; then 
+	IMAGE=$1;
+	# Delete old image
+        # delete_old_image_func;
+	# pull
+	$DOCKER_PATH pull $1;
+	if [[ $? -eq 0 ]]; then
+		install_image_func;
+		echo -e "\E[32mImage installed.";tput sgr0;
+	else
+        	echo -e "\E[31mNot found image \"$1\"." >&2;tput sgr0;
+		exit 1;
+	fi;
+fi;
+
+
