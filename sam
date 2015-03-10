@@ -84,6 +84,21 @@ delete_old_image_func () {
 	# output:
 }
 
+# Image latest?
+image_latest_func (){
+	OLD_IMAGE=`$DOCKER_PATH images |grep latest |awk ' {print $1} '| grep $IMAGE`;
+	if [[ -n $OLD_IMAGE ]];then
+                IMAGE="$IMAGE:latest"
+        fi;
+	# Exist image
+	TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep "^$IMAGE"`;
+        if [[ -z $TEST_IMAGE ]]; then
+                echo -e "\E[31mERROR: Not found image $IMAGE.">&2;tput sgr0;
+                echo "Run 'COMMAND -h' for more information on a command.";
+                exit 1;
+        fi;
+}
+
 ## Commands
 # This root?
 if [[ $EUID -ne 0 ]]; then
@@ -143,14 +158,9 @@ do
 	   fi
 	  ;;
 
-	i ) TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep "$OPTARG"`;
-	   if [[ -z $TEST_IMAGE ]]; then
-		echo -e "\E[31mERROR: Not found image $OPTARG.">&2;tput sgr0;
-		echo "Run 'COMMAND -h' for more information on a command.";
-		exit 1;
-	   fi;
+	i )IMAGE=$OPTARG;
+	   image_latest_func;
 	   # Install image
-	   IMAGE=$OPTARG;
 	   install_image_func;
 	   echo -e "\E[32mImage installed.";tput sgr0;
 	   exit 0
@@ -168,13 +178,8 @@ do
            exit 0
 	  ;;
 
-	I ) TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep $OPTARG`;
-	    if [[ -z $TEST_IMAGE ]]; then
-                echo -e "\E[31mERROR: Not found image $OPTARG.">&2;tput sgr0;
-                echo "Run 'COMMAND -h' for more information on a command.";
-                exit 1;
-            fi;
-	    IMAGE=$OPTARG
+	I ) IMAGE=$OPTARG;
+	    image_latest_func;
 	    copy_meta_func;
 	    pwd=$PWD;
             cd $TEMPLATE_DIR/meta;
@@ -199,11 +204,10 @@ done
 
 if [[ -z $IMAGE ]]; then 
 	IMAGE=$1;
-	# Delete old image
-        # delete_old_image_func;
-	# pull
-	$DOCKER_PATH pull $1;
+	# Pull
+	$DOCKER_PATH pull $IMAGE;
 	if [[ $? -eq 0 ]]; then
+		image_latest_func;
 		install_image_func;
 		echo -e "\E[32mImage installed.";tput sgr0;
 	else
