@@ -96,12 +96,16 @@ Options:
 	-f  [archive.tar]	Docker load image from tar archive.
 	-i  [image]:[version]	Install selected docker image.
 	-u  [container]		Uninstall selected container.
+	-x  [-f:-i:-u] 		Debug mode from options.
+	-I  [image]:[version]	Info to image.
 	-h           		Help.
 ";
 
-while getopts "f:i:u:h" OPTION
+while getopts "xi:xf:xu:f:i:u:I:h" OPTION
 do
     case $OPTION in
+	x ) set -vx
+	  ;;
         f ) if [ -f $OPTARG ]; then
 
                 ## Find image name to archive.
@@ -136,7 +140,8 @@ do
 	   else
 		echo -e "\E[31m$0: Archive image not defined." >&2;tput sgr0;
 		exit 1;
-	   fi;;
+	   fi
+	  ;;
 
 	i ) TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep "$OPTARG"`;
 	   if [[ -z $TEST_IMAGE ]]; then
@@ -144,14 +149,12 @@ do
 		echo "Run 'COMMAND -h' for more information on a command.";
 		exit 1;
 	   fi;
-	   #IMAGE=`echo $OPTARG | awk -F ':' 'NF--' | sed 's/ /:/g'`
-	   # Delete old image
-           #delete_old_image_func;   
 	   # Install image
 	   IMAGE=$OPTARG;
 	   install_image_func;
 	   echo -e "\E[32mImage installed.";tput sgr0;
-	   exit 0;;
+	   exit 0
+	  ;;
 	
 	u ) IMAGE=`$DOCKER_PATH ps -a | grep $OPTARG | unexpand -a -t2|awk -F '\t+' '{print $2}'`;
 	   if [[ -z $IMAGE ]]; then
@@ -162,10 +165,35 @@ do
 	   # Uninstall image
 	   uninstall_image_func;
            echo -e "\E[32mImage uninstalled.";tput sgr0;
-           exit 0;;
+           exit 0
+	  ;;
 
-        h ) echo "$USAGE"; exit;;
-        *) echo;;
+	I ) TEST_IMAGE=`docker images | grep -v "REPOSITORY" | awk ' {print $1,$2} ' | sed "s/ /:/g" | grep $OPTARG`;
+	    if [[ -z $TEST_IMAGE ]]; then
+                echo -e "\E[31mERROR: Not found image $OPTARG.">&2;tput sgr0;
+                echo "Run 'COMMAND -h' for more information on a command.";
+                exit 1;
+            fi;
+	    IMAGE=$OPTARG
+	    copy_meta_func;
+	    pwd=$PWD;
+            cd $TEMPLATE_DIR/meta;
+            echo;
+	    cat DESCRIPTION;
+	    echo;
+	    echo "    Time of creation:"
+	    cat BUILDSTAMP; 
+            cd $pwd;
+            rm -rf $TEMPLATE_DIR;
+            echo;
+	    exit 0
+	  ;;
+
+        h ) echo "$USAGE"; 
+	    exit
+          ;;
+        *) echo
+	  ;;
     esac
 done
 
