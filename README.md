@@ -6,10 +6,19 @@ Options:
 
         -i  [image]:[version]   Install selected docker image.
 
-        -u  [container]         Uninstall selected container.
+        -u  [image]:[version]   Uninstall selected container to db.
 
         -x  [-f:-i:-u]          Debug mode from options.
 
         -I  [image]:[version]   Info to image.
 
-        -h                      Help.
+        -l                      List installed image to db.
+
+        -h                      Help
+
+Env:
+
+        DOCKER_PATH             Path docker. default: DOCKER_PATH=/usr/bin/docker
+
+        SAM_DB_LIST             Database from installed images. default: SAM_DB_LIST=/var/db/sam/list_installed
+
