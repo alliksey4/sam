@@ -11,6 +11,8 @@ Options:
         -x  [-f:-i:-u]          Debug mode from options.
 
         -I  [image]:[version]   Info to image.
+	
+        -c  [image]:[version]   Copy meta image in dirrectory /tmp.
 
         -l                      List installed image to db.
 

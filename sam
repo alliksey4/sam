@@ -113,10 +113,11 @@ fi;
 USAGE="
 Options:
 	-f  [archive.tar]	Docker load image from tar archive.
-	-i  [image]:[version]	Install selected docker image.
+	-i  [image]		Install selected docker image.
 	-u  [image]:[version]	Uninstall selected container to db.
 	-x  [-f:-i:-u] 		Debug mode from options.
 	-I  [image]:[version]	Info to image.
+	-c  [image]:[version]	Copy meta image in dirrectory /tmp.
 	-l  			List installed image to db.
 	-h           		Help.
 
@@ -126,7 +127,7 @@ Env:
 	
 ";
 
-while getopts "li:f:u:xI:h" OPTION
+while getopts "li:f:u:c:xI:h" OPTION
 do
     case $OPTION in
 
@@ -227,6 +228,31 @@ do
            echo -e "\E[32mImage uninstalled.";tput sgr0;
            exit 0
 	  ;;
+        c ) IMAGE=$OPTARG;
+	    image_latest_func;
+	    # Exist image?
+            TEST_IMAGE=`$DOCKER_PATH images | grep -v 'REPOSITORY' | awk -F ' ' ' {print $1,$2} ' | sed "s/ /:/g" | grep "$IMAGE"`;
+            if [[ -z $TEST_IMAGE ]];then
+                echo -e "\E[31mERROR: Image not found to registry docker. Stop installation.">&2;tput sgr0;
+                exit 1;
+            fi;
+	    copy_meta_func;
+            pwd=$PWD;
+	    IMAGE=`echo $IMAGE | sed "s/\//./g"`
+	    echo;
+	    # Remove exist dirrectory
+	    if [[ -d /tmp/meta_$IMAGE ]];then
+		echo "Remove old dirrectory."
+                rm -r /tmp/meta_$IMAGE;
+            fi;
+	    mv $TEMPLATE_DIR/meta /tmp/meta_$IMAGE
+	    cd $pwd;
+	    rm -r $TEMPLATE_DIR;
+	    echo "Meta files are moved to a folder /tmp/meta_$IMAGE"
+	    echo;
+	    exit 0
+	   ;;
+	    
 
 	I ) IMAGE=$OPTARG;
 	    image_latest_func;
