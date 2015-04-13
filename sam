@@ -8,6 +8,10 @@ if [[ -z $SAM_DB_LIST ]];then
         SAM_DB_LIST='/var/db/sam/list_installed';
 fi;
 
+if [[ -z $BIN_DIR ]]; then
+        BIN_DIR='/opt/bin'
+fi;
+
 IMAGE='';
 
 #set -xv
@@ -101,6 +105,19 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# Exist BIN_DIR dirrectory ?
+if ! [[ -d $BIN_DIR ]]; then
+        echo "Create $BIN_DIR.";
+        mkdir -p $BIN_DIR;
+fi
+
+# Exist BIN_DIR in path ?
+TEST_PATH=`echo $PATH | grep $BIN_DIR`;
+if [[ -z $TEST_PATH ]]; then
+	echo -e "\E[31mERROR: Not found path \"$BIN_DIR\" in environments \$PATH. Add.">&2;tput sgr0;
+	exit 1;
+fi;
+
 # Exist db?
 if ! [[ -f $SAM_DB_LIST ]];then
         echo;
@@ -121,10 +138,10 @@ Options:
 	-l  			List installed image to db.
 	-h           		Help.
 
-Env:
+Environments:
 	DOCKER_PATH		Path docker. default: DOCKER_PATH=$DOCKER_PATH
 	SAM_DB_LIST		Database from installed images. default: SAM_DB_LIST=$SAM_DB_LIST
-	
+	BIN_DIR			Executable file is copied in dirrectory, default: BIN_DIR=$BIN_DIR	
 ";
 
 while getopts "li:f:u:c:xI:h" OPTION

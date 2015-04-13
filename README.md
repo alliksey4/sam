@@ -18,9 +18,10 @@ Options:
 
         -h                      Help
 
-Env:
+Environments:
 
         DOCKER_PATH             Path docker. default: DOCKER_PATH=/usr/bin/docker
 
         SAM_DB_LIST             Database from installed images. default: SAM_DB_LIST=/var/db/sam/list_installed
 
+	BIN_DIR			Executable file is copied in dirrectory, default: BIN_DIR=/opt/bin
