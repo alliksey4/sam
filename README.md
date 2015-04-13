@@ -24,4 +24,4 @@ Environments:
 
         SAM_DB_LIST             Database from installed images. default: SAM_DB_LIST=/var/db/sam/list_installed
 
-        BIN_DIR			Executable file is copied in dirrectory, default: BIN_DIR=/opt/bin
+        BIN_DIR                 Executable file is copied in dirrectory, default: BIN_DIR=/opt/bin
