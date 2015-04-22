@@ -167,9 +167,9 @@ do
                 exit 1;
 	    else
 		echo;
-		echo "      List versions \"$OPTARG\":";
+		echo "      List versions:";
 		echo;
-		echo $LIST_VERSIONS | sed 's/ /\n/g';
+		echo "$LIST_VERSIONS" | sed 's/ /\n/g' | sed -e 's#^#'"$OPTARG"':#g';
 		echo;
             fi;
 	    exit 0
