@@ -16,6 +16,8 @@ Options:
 
         -l                      List installed image to db.
 
+        -L  [image]             List version to image from Docker Hub.
+
         -h                      Help
 
 Environments:

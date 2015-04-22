@@ -130,12 +130,13 @@ fi;
 USAGE="
 Options:
 	-f  [archive.tar]	Docker load image from tar archive.
-	-i  [image]		Install selected docker image.
+	-i  [image]:[version]	Install selected docker image.
 	-u  [image]:[version]	Uninstall selected container to db.
 	-x  [-f:-i:-u] 		Debug mode from options.
 	-I  [image]:[version]	Info to image.
 	-c  [image]:[version]	Copy meta image in dirrectory /tmp.
 	-l  			List installed image to db.
+	-L  [image]		List version to image from Docker Hub.
 	-h           		Help.
 
 Environments:
@@ -144,7 +145,7 @@ Environments:
 	BIN_DIR			Executable file is copied in dirrectory, default: BIN_DIR=$BIN_DIR	
 ";
 
-while getopts "li:f:u:c:xI:h" OPTION
+while getopts "L:li:f:u:c:xI:h" OPTION
 do
     case $OPTION in
 
@@ -154,6 +155,25 @@ do
             echo;
 	    exit 0
           ;;
+
+	L ) ping -c 1 -n -q registry.hub.docker.com > /dev/null;
+	    if [ $? -ne "0" ]; then
+		echo -e "\E[31mERROR: Host registry.hub.docker.com is unknown.">&2;tput sgr0;
+		exit 1;
+	    fi;
+	    LIST_VERSIONS=`curl "https://registry.hub.docker.com//v1/repositories/$OPTARG/tags" -f -s | sed 's/,/,\n/g' | grep name | awk -F '"' '{print $4}'`
+	    if [ $? -ne "0" ]; then
+                echo -e "\E[31mERROR: Image name is unknown.">&2;tput sgr0;
+                exit 1;
+	    else
+		echo;
+		echo "      List versions \"$OPTARG\":";
+		echo;
+		echo $LIST_VERSIONS | sed 's/ /\n/g';
+		echo;
+            fi;
+	    exit 0
+	  ;;
 
 	x ) set -vx
 	  ;;
