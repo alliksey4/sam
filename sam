@@ -149,7 +149,8 @@ while getopts "L:li:f:u:c:xI:h" OPTION
 do
     case $OPTION in
 
-	l ) echo "List images:";
+	l ) echo;
+	    echo "      List images:";
             echo;
             cat $SAM_DB_LIST | awk -F '\t' 'BEGIN {OFS = ":"} {print $2, $3}';
             echo;
